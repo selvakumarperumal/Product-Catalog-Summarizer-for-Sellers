@@ -48,6 +48,13 @@ coverage.xml
 *.cover
 *.py.cover
 .hypothesis/
+
+# Project specific
+app/uploads/
+app/outputs/
+logs/
+*.log
+.env
 .pytest_cache/
 cover/
 

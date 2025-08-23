@@ -1,0 +1,140 @@
+# ==============================================================
+# Product Catalog Summarizer - Docker Compose Configuration
+# ==============================================================
+# This file defines the multi-container setup for the application
+# including development, production, and supporting services
+
+# Define all services that make up the application
+services:
+  
+  # ==============================================================
+  # Development Service - for local development with hot-reloading
+  # ==============================================================
+  # This service is optimized for development workflow with:
+  # - Volume mounting for live code reloading
+  # - Development-specific build target
+  # - Exposed ports for debugging
+
+  pcs-dev:
+    # Custom container name for easy identification
+    container_name: pcs-dev
+    build:
+      # Build context is current directory
+      context: .
+      # Use 'dev' stage from Dockerfile
+      target: dev
+    ports:
+      # Map host port 8000 to container port 8000
+      - "8000:8000"
+    volumes:
+      # Mount local app directory for hot-reloading
+      - ./app:/ProductCatalogSummarizer/app
+      # Mount uploads and output directories
+      - ./uploads:/ProductCatalogSummarizer/uploads
+      - ./output:/ProductCatalogSummarizer/output
+    environment:
+      # Pass Gemini API key from .env file
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+    profiles:
+      # Only runs when 'dev' profile is specified
+      - dev
+    # Auto-restart container unless manually stopped
+    restart: unless-stopped
+
+  # ==============================================================
+  # Production Service - for production deployment
+  # ==============================================================
+  # This service is optimized for production with:
+  # - No volume mounting (code is baked into image)
+  # - Production-specific build optimizations
+  # - Minimal environment exposure
+  
+  pcs-prod:
+    # Custom container name for production
+    container_name: pcs-prod
+    build:
+      # Build context is current directory
+      context: .
+      # Use 'prod' stage from Dockerfile
+      target: prod
+    ports:
+      # Map host port 8000 to container port 8000
+      - "8000:8000"
+    environment:
+      # Pass Gemini API key from .env file
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    profiles:
+      # Only runs when 'prod' profile is specified
+      - prod
+    # Auto-restart container unless manually stopped
+    restart: unless-stopped
+
+  # ==============================================================
+  # Redis Service - for caching and session management
+  # ==============================================================
+  # Redis is used for:
+  # - Caching API responses and computed summaries
+  # - Session management for user interactions
+  # - Task queue management for background processing
+  # - Temporary storage for uploaded files metadata
+  
+  redis:
+    # Use official Redis image (latest stable version)
+    image: redis:latest
+    # Custom container name for easy identification
+    container_name: pcs-redis
+    ports:
+      # Map standard Redis port
+      - "6379:6379"
+    profiles:
+      # Available in both development and production
+      - dev
+      - prod
+    # Auto-restart container unless manually stopped
+    restart: unless-stopped
+    # Optional: Add Redis configuration
+    # command: redis-server --appendonly yes  # Enable persistence
+    # volumes:
+    #   - redis-data:/data                    # Persist Redis data
+
+  worker:
+    container_name: pcs-worker
+    build:
+      context: .
+      target: base
+    volumes:
+      - ./app:/ProductCatalogSummarizer/app
+      # Mount uploads and output directories
+      - ./uploads:/ProductCatalogSummarizer/uploads
+      - ./output:/ProductCatalogSummarizer/output
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - REDIS_URL=redis://redis:6379/0
+    command: >
+      celery -A app.celery_app.celery_app worker --loglevel=info
+      -Q default
+    depends_on:
+      - redis
+    profiles:
+      - dev
+      - prod
+    restart: unless-stopped
+
+# ==============================================================
+# Usage Instructions
+# ==============================================================
+# Development mode:
+#   docker-compose --profile dev up -d
+#
+# Production mode:  
+#   docker-compose --profile prod up -d
+#
+# Stop services:
+#   docker-compose --profile <dev|prod> down
+#
+# View logs:
+#   docker-compose logs -f pcs-dev    # Development
+#   docker-compose logs -f pcs-prod   # Production
+#   docker-compose logs -f pcs-redis  # Redis logs
+# ==============================================================
