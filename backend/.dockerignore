@@ -1,0 +1,17 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+.env
+.envrc
+uploads/
+output/
+*.csv
+*.xlsx
+run_single_test.py
+test_catalog.csv
+README.md
+Dockerfile
+.dockerignore

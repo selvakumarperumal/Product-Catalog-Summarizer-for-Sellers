@@ -1,0 +1,39 @@
+# ──────────────────────────────────────────────
+# Console-only Logging Configuration
+# ──────────────────────────────────────────────
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  console:
+    format: "%(asctime)s │ %(levelname)-8s │ %(name)s │ %(message)s"
+    datefmt: "%H:%M:%S"
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: console
+    stream: ext://sys.stdout
+
+loggers:
+  app:
+    level: DEBUG
+    handlers: [console]
+    propagate: false
+  app.services.llm_service:
+    level: DEBUG
+    handlers: [console]
+    propagate: false
+  app.prompts:
+    level: DEBUG
+    handlers: [console]
+    propagate: false
+  uvicorn:
+    level: INFO
+    handlers: [console]
+    propagate: false
+
+root:
+  level: WARNING
+  handlers: [console]

@@ -1,0 +1,79 @@
+# ──────────────────────────────────────────────
+# Prompt Templates & Few-Shot Examples
+# ──────────────────────────────────────────────
+
+system_prompts:
+  summarizer: |
+    You are a Senior E-Commerce Product Analyst. Your job is to create
+    concise, SEO-friendly product summaries for online sellers.
+
+    Rules:
+    - Write a 2-3 sentence summary per product.
+    - Highlight: brand, category, key features, material, target audience.
+    - Use natural buyer-search language — no raw field names or jargon.
+    - Never fabricate details not present in the data.
+    - Each summary must be standalone.
+
+    {format_instructions}
+
+  reviewer: |
+    You are a Quality Reviewer for e-commerce listings.
+    Score the summary on: Accuracy (1-5), Completeness (1-5),
+    Readability (1-5), SEO Quality (1-5).
+    Flag any hallucinated details.
+
+    {format_instructions}
+
+human_prompts:
+  summarize_batch: |
+    Summarize these products. Each row = one product.
+
+    Product Data (CSV):
+    ```
+    {product_data}
+    ```
+
+    Return row IDs and summaries in the requested format.
+
+  summarize_single: |
+    Summarize this product for an e-commerce listing:
+
+    {product_details}
+
+    Write a compelling 2-3 sentence summary.
+
+  review: |
+    Review this summary against the original data:
+
+    Original: {original_data}
+    Summary: {generated_summary}
+
+    Score and provide feedback.
+
+few_shot_examples:
+- input: |
+    ProductName: HIGHLANDER Men Slim Fit Casual Shirt
+    Brand: HIGHLANDER | Category: Topwear | Color: Blue
+    Size: M, L, XL | Price: 699 | Rating: 4.2
+  output: |
+    HIGHLANDER Men's Slim Fit Casual Shirt in Blue — a versatile
+    topwear staple available in M, L, and XL. Priced at ₹699
+    with a 4.2-star rating, ideal for casual and smart-casual wear.
+
+- input: |
+    ProductName: Roadster Women's Skinny Fit Jeans
+    Brand: Roadster | Category: Bottomwear | Color: Dark Blue
+    Size: 28, 30, 32 | Price: 899 | Rating: 4.0
+  output: |
+    Roadster Women's Skinny Fit Jeans in Dark Blue — a wardrobe
+    essential in sizes 28-32. At ₹899 with a 4.0-star rating,
+    these jeans deliver a flattering fit for everyday wear.
+
+- input: |
+    ProductName: boAt Rockerz 450 Bluetooth Headphone
+    Brand: boAt | Category: Electronics | Color: Black
+    Price: 1499 | Rating: 4.3
+  output: |
+    boAt Rockerz 450 Wireless Bluetooth Headphones in Black —
+    a popular audio accessory offering immersive sound. Priced
+    at ₹1,499 with a 4.3-star rating, designed for comfort.
