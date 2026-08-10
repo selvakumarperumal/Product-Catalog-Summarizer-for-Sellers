@@ -26,7 +26,8 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 8000
+  port: 80
+  targetPort: 8000
 
 env:
 - name: TF_MODEL_NAME
