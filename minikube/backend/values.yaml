@@ -1,0 +1,104 @@
+# Default values for Product Catalog Summarizer Backend.
+# This is a YAML-formatted file.
+
+replicaCount: 1
+
+image:
+  repository: catalog-summarizer-backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 8000
+
+env:
+- name: TF_MODEL_NAME
+  value: "gemini-2.0-flash"
+- name: TF_MODEL_TEMPERATURE
+  value: "0.3"
+
+envFrom:
+- secretRef:
+    name: my-secret
+
+gatewayApi:
+  enabled: true
+  gatewayClass:
+    create: true
+    name: istio
+    controllerName: istio.io/gateway-controller
+  gateway:
+    create: true
+    name: ""
+    className: istio
+    port: 80
+  hostnames: []
+  pathPrefix: /
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /api/v1/health
+    port: 8000
+  initialDelaySeconds: 10
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /api/v1/health
+    port: 8000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+# KEDA Event-Driven Autoscaler Configuration
+keda:
+  enabled: true
+  minReplicaCount: 1
+  maxReplicaCount: 3
+  pollingInterval: 15
+  cooldownPeriod: 60
+  triggers:
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      value: "70"
+  - type: memory
+    metricType: Utilization
+    metadata:
+      value: "75"
+  - type: cron
+    metadata:
+      timezone: Asia/Kolkata
+      start: "0 9 * * 1-5"
+      end: "0 20 * * 1-5"
+      desiredReplicas: "3"
+
+volumes: []
+volumeMounts: []
+nodeSelector: {}
+tolerations: []
+affinity: {}

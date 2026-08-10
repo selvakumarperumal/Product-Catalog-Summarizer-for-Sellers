@@ -52,5 +52,7 @@ uploads/*
 # Environment variables & secrets
 .env
 .envrc
-*.env*
+*.env
+*.env.local
+!.envrc.example
 

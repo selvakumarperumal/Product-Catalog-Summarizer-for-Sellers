@@ -1,0 +1,152 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Product Catalog Summarizer Backend - Kubernetes & KEDA Deployment
+# ─────────────────────────────────────────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-summarizer-backend
+  namespace: default
+  labels:
+    app: catalog-summarizer-backend
+spec:
+  selector:
+    matchLabels:
+      app: catalog-summarizer-backend
+  template:
+    metadata:
+      labels:
+        app: catalog-summarizer-backend
+    spec:
+      containers:
+      - name: backend
+        image: catalog-summarizer-backend:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        envFrom:
+        - secretRef:
+            name: my-secret
+        env:
+        - name: TF_MODEL_NAME
+          value: "gemini-2.0-flash"
+        - name: TF_MODEL_TEMPERATURE
+          value: "0.3"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-summarizer-backend-svc
+  namespace: default
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: catalog-summarizer-backend
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# KEDA ScaledObject Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: catalog-summarizer-scaler
+  namespace: default
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: catalog-summarizer-backend
+  minReplicaCount: 1 # Set to 0 for true scale-to-zero when using queue triggers
+  maxReplicaCount: 3
+  pollingInterval: 15 # Metrics check interval in seconds
+  cooldownPeriod: 60 # Wait time before scaling down after triggers clear
+  triggers:
+  # Trigger 1: CPU Utilization (Scales when average CPU exceeds 70%)
+  - type: cpu
+    metricType: Utilization
+    metadata:
+      value: "70"
+
+  # Trigger 2: Memory Utilization (Scales when average Memory exceeds 75%)
+  - type: memory
+    metricType: Utilization
+    metadata:
+      value: "75"
+
+  # Trigger 3: Cron Schedule (Pre-scale during business peak hours: 9 AM - 8 PM IST, Mon-Fri)
+  - type: cron
+    metadata:
+      timezone: Asia/Kolkata
+      start: "0 9 * * 1-5"
+      end: "0 20 * * 1-5"
+      desiredReplicas: "3"
+
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Kubernetes Gateway API Configuration (GatewayClass, Gateway & HTTPRoute)
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: istio
+spec:
+  controllerName: istio.io/gateway-controller
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: catalog-summarizer-gateway
+  namespace: default
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: catalog-summarizer-httproute
+  namespace: default
+spec:
+  parentRefs:
+  - name: catalog-summarizer-gateway
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: catalog-summarizer-backend-svc
+      port: 8000

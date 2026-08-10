@@ -1,0 +1,4 @@
+export TF_GOOGLE_API_KEY=google-api-key
+export TF_MODEL_NAME=gemini-model
+export TF_MODEL_TEMPERATURE=0
+export TF_MAX_FILE_SIZE=10
