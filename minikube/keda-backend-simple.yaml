@@ -1,7 +1,17 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Product Catalog Summarizer Backend - Kubernetes & KEDA Deployment
-# ─────────────────────────────────────────────────────────────────────────────
+# =============================================================================
+# Product Catalog Summarizer Backend - Kubernetes, KEDA & Gateway API Manifest
+# =============================================================================
 
+# -----------------------------------------------------------------------------
+# 1. DEPLOYMENT
+# -----------------------------------------------------------------------------
+# Purpose: Defines the desired state for the backend application workload.
+# Note on Replicas: The `replicas` field is intentionally omitted here so that
+# KEDA's ScaledObject has sole authority over pod scaling, avoiding conflicts
+# during `kubectl apply`.
+# Container Port: Port 8000 is used internally where FastAPI/Uvicorn runs.
+# Environment: Secrets are dynamically mounted from `my-secret` via `envFrom`.
+# -----------------------------------------------------------------------------
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -52,7 +62,17 @@ spec:
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 10
+
 ---
+# -----------------------------------------------------------------------------
+# 2. SERVICE
+# -----------------------------------------------------------------------------
+# Purpose: Exposes the backend Deployment internally within the cluster.
+# Port Mapping: Exposes standard HTTP port 80 to cluster clients and routes
+# traffic to container targetPort 8000.
+# Istio Integration: The port is named `http` so Istio Envoy sidecars automatically
+# enable HTTP L7 protocol processing, tracing, and metrics.
+# -----------------------------------------------------------------------------
 apiVersion: v1
 kind: Service
 metadata:
@@ -67,10 +87,18 @@ spec:
     name: http
   selector:
     app: catalog-summarizer-backend
+
 ---
-# ─────────────────────────────────────────────────────────────────────────────
-# KEDA ScaledObject Configuration
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# 3. KEDA SCALEDOBJECT
+# -----------------------------------------------------------------------------
+# Purpose: Configures event-driven and metric-based autoscaling for the backend.
+# Scaling Boundaries: Maintains between 1 (minimum) and 3 (maximum) replicas.
+# Triggers:
+#   - CPU: Scales up when average CPU utilization exceeds 70%.
+#   - Memory: Scales up when average Memory utilization exceeds 75%.
+#   - Cron: Pre-scales to 3 replicas during weekday business hours (9 AM - 8 PM IST).
+# -----------------------------------------------------------------------------
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -81,24 +109,19 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: catalog-summarizer-backend
-  minReplicaCount: 1 # Set to 0 for true scale-to-zero when using queue triggers
+  minReplicaCount: 1
   maxReplicaCount: 3
-  pollingInterval: 15 # Metrics check interval in seconds
-  cooldownPeriod: 60 # Wait time before scaling down after triggers clear
+  pollingInterval: 15
+  cooldownPeriod: 60
   triggers:
-  # Trigger 1: CPU Utilization (Scales when average CPU exceeds 70%)
   - type: cpu
     metricType: Utilization
     metadata:
       value: "70"
-
-  # Trigger 2: Memory Utilization (Scales when average Memory exceeds 75%)
   - type: memory
     metricType: Utilization
     metadata:
       value: "75"
-
-  # Trigger 3: Cron Schedule (Pre-scale during business peak hours: 9 AM - 8 PM IST, Mon-Fri)
   - type: cron
     metadata:
       timezone: Asia/Kolkata
@@ -107,9 +130,13 @@ spec:
       desiredReplicas: "3"
 
 ---
-# ─────────────────────────────────────────────────────────────────────────────
-# Kubernetes Gateway API Configuration (GatewayClass, Gateway & HTTPRoute)
-# ─────────────────────────────────────────────────────────────────────────────
+# -----------------------------------------------------------------------------
+# 4. GATEWAYCLASS (KUBERNETES GATEWAY API)
+# -----------------------------------------------------------------------------
+# Purpose: Defines the controller class for managing Gateway instances.
+# Controller Link: Binds `gatewayClassName: istio` to Istio's Gateway API
+# controller (`istio.io/gateway-controller`).
+# -----------------------------------------------------------------------------
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
@@ -118,6 +145,12 @@ spec:
   controllerName: istio.io/gateway-controller
 
 ---
+# -----------------------------------------------------------------------------
+# 5. GATEWAY (KUBERNETES GATEWAY API)
+# -----------------------------------------------------------------------------
+# Purpose: Defines the entrypoint load balancer receiving external HTTP traffic.
+# Listener: Listens on port 80 for HTTP connections matching `gatewayClassName: istio`.
+# -----------------------------------------------------------------------------
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -134,6 +167,13 @@ spec:
         from: Same
 
 ---
+# -----------------------------------------------------------------------------
+# 6. HTTPROUTE (KUBERNETES GATEWAY API)
+# -----------------------------------------------------------------------------
+# Purpose: Defines Layer-7 routing rules for HTTP traffic entering the Gateway.
+# Routing Rule: Binds to `catalog-summarizer-gateway` and routes all requests with
+# path prefix `/` to `catalog-summarizer-backend-svc` on port 80.
+# -----------------------------------------------------------------------------
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
