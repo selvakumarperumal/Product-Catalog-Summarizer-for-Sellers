@@ -215,11 +215,26 @@ minikube tunnel
 ```
 
 ### 2. Retrieve Gateway IP Address
-```bash
-# Get the IP assigned to the Gateway
-export GATEWAY_IP=$(kubectl get gateway catalog-summarizer-gateway -o jsonpath='{.status.addresses[0].value}')
-echo "Gateway IP: $GATEWAY_IP"
-```
+
+First check your active Gateway name (`kubectl get gateway -n default`):
+
+- **If deployed via Helm (`helm upgrade --install backend ...`)**:
+  ```bash
+  export GATEWAY_IP=$(kubectl get gateway backend-gateway -n default -o jsonpath='{.status.addresses[0].value}')
+  echo "Gateway IP: $GATEWAY_IP"
+  ```
+
+- **If deployed via Standalone Manifest (`keda-backend-simple.yaml`)**:
+  ```bash
+  export GATEWAY_IP=$(kubectl get gateway catalog-summarizer-gateway -n default -o jsonpath='{.status.addresses[0].value}')
+  echo "Gateway IP: $GATEWAY_IP"
+  ```
+
+- **Universal Command (Fetches the first active Gateway IP)**:
+  ```bash
+  export GATEWAY_IP=$(kubectl get gateway -n default -o jsonpath='{.items[0].status.addresses[0].value}')
+  echo "Gateway IP: $GATEWAY_IP"
+  ```
 
 ### 3. Test Health Endpoint
 ```bash

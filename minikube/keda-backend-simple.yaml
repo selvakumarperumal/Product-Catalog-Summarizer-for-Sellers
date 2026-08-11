@@ -62,7 +62,6 @@ spec:
             port: 8000
           initialDelaySeconds: 5
           periodSeconds: 10
-
 ---
 # -----------------------------------------------------------------------------
 # 2. SERVICE
@@ -87,7 +86,6 @@ spec:
     name: http
   selector:
     app: catalog-summarizer-backend
-
 ---
 # -----------------------------------------------------------------------------
 # 3. KEDA SCALEDOBJECT
@@ -128,7 +126,6 @@ spec:
       start: "0 9 * * 1-5"
       end: "0 20 * * 1-5"
       desiredReplicas: "3"
-
 ---
 # -----------------------------------------------------------------------------
 # 4. GATEWAYCLASS (KUBERNETES GATEWAY API)
@@ -143,7 +140,6 @@ metadata:
   name: istio
 spec:
   controllerName: istio.io/gateway-controller
-
 ---
 # -----------------------------------------------------------------------------
 # 5. GATEWAY (KUBERNETES GATEWAY API)
@@ -165,7 +161,6 @@ spec:
     allowedRoutes:
       namespaces:
         from: Same
-
 ---
 # -----------------------------------------------------------------------------
 # 6. HTTPROUTE (KUBERNETES GATEWAY API)
