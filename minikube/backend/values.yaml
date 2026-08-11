@@ -4,9 +4,9 @@
 replicaCount: 1
 
 image:
-  repository: catalog-summarizer-backend
+  repository: docker.io/library/pcs-app
   pullPolicy: IfNotPresent
-  tag: "latest"
+  tag: "0.1.0"
 
 imagePullSecrets: []
 nameOverride: ""

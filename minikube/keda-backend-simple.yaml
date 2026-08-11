@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: catalog-summarizer-backend:latest
+        image: docker.io/library/pcs-app:0.1.0
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000
