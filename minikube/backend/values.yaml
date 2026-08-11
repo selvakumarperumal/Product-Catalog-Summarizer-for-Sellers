@@ -42,7 +42,7 @@ envFrom:
 gatewayApi:
   enabled: true
   gatewayClass:
-    create: true
+    create: false
     name: istio
     controllerName: istio.io/gateway-controller
   gateway:
