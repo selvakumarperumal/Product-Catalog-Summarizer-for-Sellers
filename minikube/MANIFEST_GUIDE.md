@@ -1,6 +1,6 @@
 # Comprehensive Kubernetes, KEDA & Gateway API Manifest Guide
 
-This guide provides an exhaustive, block-by-block technical reference for [keda-backend-simple.yaml](file:///home/selva/Documents/Production/Product-Catalog-Summarizer-for-Sellers/minikube/keda-backend-simple.yaml). It includes the **full YAML code for every resource block** accompanied by detailed field-by-field explanations, architectural design decisions, and operational instructions.
+This guide provides an exhaustive, block-by-block technical reference for [keda-backend-simple.yaml](file:///home/selva/Documents/Production/Product-Catalog-Summarizer-for-Sellers/minikube/keda-backend-simple.yaml). It includes the **purpose & detailed architectural description of each manifest block**, the **full YAML code**, field-by-field explanations, design choices, and operational instructions.
 
 ---
 
@@ -27,6 +27,11 @@ graph TD
 ---
 
 ### Block 1: Deployment (`kind: Deployment`)
+
+#### Purpose & Detailed Description
+- **Primary Purpose**: Defines and manages the desired state for the backend application container workload, ensuring that pod replicas remain active, healthy, and correctly configured.
+- **Architectural Role**: The Deployment acts as the core workload controller. It specifies *what* container image to run (`catalog-summarizer-backend:latest`), *how* to run it (Uvicorn/FastAPI listening on port `8000`), *where* to retrieve sensitive environment variables (`envFrom: secretRef: my-secret`), and *how* to monitor application health via liveness and readiness probes (`/api/v1/health`).
+- **Autoscaling Design Choice**: `.spec.replicas` is intentionally omitted from the Deployment manifest. This grants sole authority over pod counts to KEDA (`ScaledObject`), preventing `kubectl apply` from overriding active autoscaling decisions and causing pod thrashing.
 
 #### Full Manifest Code
 ```yaml
@@ -82,7 +87,7 @@ spec:
           periodSeconds: 10
 ```
 
-#### Detailed Field Explanation & Design Rationale
+#### Detailed Field Breakdown
 
 | Field | Description & Purpose |
 | :--- | :--- |
@@ -106,6 +111,11 @@ spec:
 
 ### Block 2: Service (`kind: Service`)
 
+#### Purpose & Detailed Description
+- **Primary Purpose**: Provides a stable internal virtual IP (ClusterIP) and DNS entry (`catalog-summarizer-backend-svc`) to load-balance traffic across dynamic backend Pod replicas.
+- **Architectural Role**: Individual Pods are ephemeral and receive new IP addresses upon restart or scaling. The Service acts as a permanent internal abstraction layer. It maps external/cluster HTTP port `80` to internal container port `8000`.
+- **Istio Protocol Naming**: The port is explicitly named `name: http`. Istio's Envoy sidecar proxies inspect port names to detect protocol types; naming it `http` enables Envoy to collect HTTP Layer-7 telemetry, distributed tracing, and request metrics.
+
 #### Full Manifest Code
 ```yaml
 apiVersion: v1
@@ -124,7 +134,7 @@ spec:
     app: catalog-summarizer-backend
 ```
 
-#### Detailed Field Explanation & Design Rationale
+#### Detailed Field Breakdown
 
 | Field | Description & Purpose |
 | :--- | :--- |
@@ -140,6 +150,10 @@ spec:
 ---
 
 ### Block 3: KEDA ScaledObject (`kind: ScaledObject`)
+
+#### Purpose & Detailed Description
+- **Primary Purpose**: Enables event-driven and multi-trigger autoscaling for the backend Deployment workload.
+- **Architectural Role**: Connects KEDA (Kubernetes Event-driven Autoscaling) to the `catalog-summarizer-backend` Deployment. Instead of static replica counts, it dynamically scales the pod count between `1` (minimum) and `3` (maximum) based on real-time metric thresholds (CPU >70%, Memory >75%) and pre-scales to 3 pods during weekday peak business hours (9 AM - 8 PM IST) to eliminate cold-start latency.
 
 #### Full Manifest Code
 ```yaml
@@ -174,7 +188,7 @@ spec:
       desiredReplicas: "3"
 ```
 
-#### Detailed Field Explanation & Design Rationale
+#### Detailed Field Breakdown
 
 | Field | Description & Purpose |
 | :--- | :--- |
@@ -193,6 +207,10 @@ spec:
 
 ### Block 4: GatewayClass (`kind: GatewayClass`)
 
+#### Purpose & Detailed Description
+- **Primary Purpose**: Serves as a cluster-scoped template that specifies the underlying controller infrastructure responsible for executing Kubernetes Gateway API configurations.
+- **Architectural Role**: Analogous to how `StorageClass` defines volume provisioners, `GatewayClass` informs Kubernetes *which controller* should provision and manage Gateway resources. It registers `gatewayClassName: istio` and binds it to Istio's Gateway API controller (`istio.io/gateway-controller`).
+
 #### Full Manifest Code
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -203,7 +221,7 @@ spec:
   controllerName: istio.io/gateway-controller
 ```
 
-#### Detailed Field Explanation & Design Rationale
+#### Detailed Field Breakdown
 
 | Field | Description & Purpose |
 | :--- | :--- |
@@ -215,6 +233,10 @@ spec:
 ---
 
 ### Block 5: Gateway (`kind: Gateway`)
+
+#### Purpose & Detailed Description
+- **Primary Purpose**: Represents the edge network entrypoint load balancer receiving external HTTP connections into the cluster.
+- **Architectural Role**: The Gateway instantiates the edge ingress listener. It references `gatewayClassName: istio` to utilize Istio's ingress controller, binds to port `80` for HTTP connections, and specifies namespace boundary policies for attached routes.
 
 #### Full Manifest Code
 ```yaml
@@ -234,7 +256,7 @@ spec:
         from: Same
 ```
 
-#### Detailed Field Explanation & Design Rationale
+#### Detailed Field Breakdown
 
 | Field | Description & Purpose |
 | :--- | :--- |
@@ -250,6 +272,10 @@ spec:
 ---
 
 ### Block 6: HTTPRoute (`kind: HTTPRoute`)
+
+#### Purpose & Detailed Description
+- **Primary Purpose**: Defines Layer-7 HTTP request routing rules, URL path matching conditions, and target backend Service destinations.
+- **Architectural Role**: Links incoming HTTP traffic at `catalog-summarizer-gateway` to internal Kubernetes workloads. It matches all URLs with path prefix `/` and forwards the requests to `catalog-summarizer-backend-svc` on port `80`.
 
 #### Full Manifest Code
 ```yaml
@@ -271,7 +297,7 @@ spec:
       port: 80
 ```
 
-#### Detailed Field Explanation & Design Rationale
+#### Detailed Field Breakdown
 
 | Field | Description & Purpose |
 | :--- | :--- |
