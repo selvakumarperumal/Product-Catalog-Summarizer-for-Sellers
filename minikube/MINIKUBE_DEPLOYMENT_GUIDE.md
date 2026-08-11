@@ -90,9 +90,32 @@ The backend deployment relies on **Kubernetes Gateway API**, **Istio**, and **KE
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.0.0/standard-install.yaml
 ```
 
-### 2. Install Istio with Gateway API Support
+### 2. Install Istio Service Mesh
+
+You can install Istio using **Helm** (recommended for GitOps and Helm workflows) or **istioctl** CLI:
+
+#### Option A: Install Istio using Helm (Recommended)
 ```bash
-# Install Istio using istioctl
+# Add Istio Helm repository
+helm repo add istio https://istio-release.storage.googleapis.com/charts
+helm repo update
+
+# Create namespace for Istio control plane
+kubectl create namespace istio-system
+
+# Step A1: Install Istio Base (CRDs and ClusterRoles)
+helm install istio-base istio/base -n istio-system --set defaultRevision=default
+
+# Step A2: Install Istio Control Plane (istiod)
+helm install istiod istio/istiod -n istio-system --wait
+
+# Enable automatic Istio sidecar injection in the default namespace (optional)
+kubectl label namespace default istio-injection=enabled
+```
+
+#### Option B: Install Istio using `istioctl` CLI (Alternative Developer Install)
+```bash
+# Install Istio using istioctl CLI
 istioctl install --set profile=default -y
 
 # Enable automatic Istio sidecar injection in the default namespace (optional)
