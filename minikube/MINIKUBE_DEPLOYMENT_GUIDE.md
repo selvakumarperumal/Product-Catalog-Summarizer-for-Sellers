@@ -250,6 +250,22 @@ content-type: application/json
 {"status":"ok","version":"1.0.0"}
 ```
 
+### 4. Test Catalog Summarization Endpoint (`/api/v1/summarize`)
+
+Upload a product catalog CSV file (`backend/test_catalog.csv`) to test the LLM summarization pipeline and save the resulting CSV output:
+
+```bash
+# Post test CSV catalog file and output summarized CSV
+curl -X POST "http://$GATEWAY_IP/api/v1/summarize" \
+  -F "file=@backend/test_catalog.csv" \
+  --output output_summary.csv
+```
+
+Inspect the returned summarized CSV:
+```bash
+cat output_summary.csv
+```
+
 ---
 
 ## Step 7: Verification & Autoscaling Load Testing
