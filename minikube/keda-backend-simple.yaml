@@ -38,11 +38,6 @@ spec:
         envFrom:
         - secretRef:
             name: my-secret
-        env:
-        - name: TF_MODEL_NAME
-          value: "gemini-2.0-flash"
-        - name: TF_MODEL_TEMPERATURE
-          value: "0.3"
         resources:
           requests:
             cpu: "100m"

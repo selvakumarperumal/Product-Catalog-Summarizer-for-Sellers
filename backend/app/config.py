@@ -13,8 +13,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TF_GOOGLE_API_KEY", "GOOGLE_API_KEY"),
     )
     MODEL_NAME: str = Field(
-        "gemini-2.0-flash",
-        validation_alias=AliasChoices("TF_MODEL_NAME", "MODEL_NAME"),
+        "gemini-1.5-flash",
+        validation_alias=AliasChoices("MODEL_NAME", "TF_MODEL_NAME"),
     )
     MODEL_TEMPERATURE: float = Field(
         0.3,

@@ -29,11 +29,7 @@ service:
   port: 80
   targetPort: 8000
 
-env:
-- name: TF_MODEL_NAME
-  value: "gemini-2.0-flash"
-- name: TF_MODEL_TEMPERATURE
-  value: "0.3"
+env: []
 
 envFrom:
 - secretRef:
